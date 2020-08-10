@@ -48,10 +48,10 @@ export interface PageBase {
   id: number;
 
   /** Page title in URL-friendly format */
-  key: number;
+  key: string;
 
   /** Page title in reading-friendly format */
-  title: number;
+  title: string;
 
   /** Information about the latest revision */
   latest: {
@@ -194,7 +194,7 @@ export interface Revision {
   size: number;
 
   /** Number of bytes changed, positive or negative, between a revision and the preceding revision (example: `-20`). If the preceding revision is unavailable, the API returns `null`. */
-  delta: number;
+  delta: number | null;
 
   /** Set to true for edits marked as [minor](https://meta.wikimedia.org/wiki/Help:Minor_edit) */
   minor: boolean;
@@ -203,9 +203,23 @@ export interface Revision {
 export interface RevisionWithPage extends Revision {
   /** Object containing information about the page */
   page: {
-    page_id: number;
+    id: number;
     title: string;
   };
+}
+
+export interface History {
+  /** API route to get the latest revisions */
+  latest: string;
+
+  /** If available, API route to get the prior revisions */
+  older?: string;
+
+  /** If available, API route to get the following revisions */
+  newer?: string;
+
+  /** Array of 0-20 [revision objects](https://www.mediawiki.org/wiki/API:REST_API/Reference#Revision_object) */
+  revisions: Revision[];
 }
 
 export interface ApiError {
