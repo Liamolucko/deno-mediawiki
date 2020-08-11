@@ -135,13 +135,14 @@ export class Wiki {
   ): Promise<Revision | RevisionWithPage> {
     return {
       id: revision.revid,
-      user: {
-        name: revision.user,
-        id: revision.userid,
-      },
       timestamp: revision.timestamp,
-      comment: revision.comment,
+      minor: revision.minor,
       size: revision.size,
+      comment: revision.comment,
+      user: {
+        id: revision.userid || null,
+        name: revision.user,
+      },
       delta: revision.parentid !== 0
         ? await this.actionsRequest(
           {
@@ -150,9 +151,8 @@ export class Wiki {
             prop: "revisions",
             rvprop: "size",
           },
-        ).then(({ query }: QueryResponse) => query.pages[0].revisions[0].size)
+        ).then(({ query }: QueryResponse) => revision.size - query.pages[0].revisions[0].size)
         : null,
-      minor: revision.minor,
       ...(typeof page !== "undefined" &&
         { page: { id: page.pageid, title: page.title } }),
     };
@@ -163,21 +163,21 @@ export class Wiki {
    */
   async request(
     url: string,
-    params: Record<string, string | number | string[]> = {},
+    params: Record<string, string | number | string[] | undefined> = {},
     init?: RequestInit,
   ) {
     return fetch(
       `${path.join(this.apiUrl, url)}?${
         new URLSearchParams(
           Object.fromEntries(
-            Object.entries(params).map((
-              [key, value],
-            ) => [
-              key,
-              typeof value === "string" ? value : typeof value === "number"
-                ? value.toString()
-                : value.join("|"),
-            ]),
+            Object.entries(params)
+              .filter((param): param is [string, string | number | string[]] => typeof param[1] !== "undefined")
+              .map(([key, value]) => [
+                key,
+                typeof value === "string" ? value : typeof value === "number"
+                  ? value.toString()
+                  : value.join("|"),
+              ]),
           ),
         ).toString()
       }`,
@@ -200,16 +200,16 @@ export class Wiki {
         formatversion: "2",
         errorformat: "plaintext",
         ...Object.fromEntries(
-          Object.entries(params).map((
-            [key, value],
-          ) => [
-            key,
-            typeof value === "string" || typeof value === "undefined"
-              ? value
-              : typeof value === "number"
-              ? value.toString()
-              : value.join("|"),
-          ]),
+          Object.entries(params)
+            .filter((param): param is [string, string | number | string[]] => typeof param[1] !== "undefined")
+            .map(([key, value]) => [
+              key,
+              typeof value === "string" || typeof value === "undefined"
+                ? value
+                : typeof value === "number"
+                ? value.toString()
+                : value.join("|"),
+            ]),
         ),
       })}`,
       init,
@@ -221,7 +221,7 @@ export class Wiki {
   // Polyfills
 
   /** WIP */
-  async searchPolyfill(
+  private async searchPolyfill(
     q: string,
     limit: number | string = 50,
   ): Promise<{ pages: SearchResult[] }> {
@@ -233,7 +233,7 @@ export class Wiki {
     });
   }
 
-  async filePolyfill(title: string, thumbnails = true, thumbsize = 1000000) {
+  private async filePolyfill(title: string, thumbnails = true, thumbsize = 1000000) {
     const page = await this.actionsRequest({
       action: "query",
       titles: title,

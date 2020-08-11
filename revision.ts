@@ -61,7 +61,7 @@ export class AsyncRevision extends RevisionBase
 
   // Async property accessors
 
-  get user(): Promise<{ name: string; id: number }> {
+  get user(): Promise<{ name: string; id: number | null }> {
     if (typeof this.promise === "undefined") {
       this.promise = this.fetch();
     }
@@ -142,7 +142,7 @@ export class AsyncRevision extends RevisionBase
 
 export class ResolvedRevision extends RevisionBase implements RevisionWithPage {
   id: number;
-  user: { name: string; id: number };
+  user: { name: string; id: number | null };
   timestamp: string;
   comment: string | null;
   size: number;
@@ -163,5 +163,19 @@ export class ResolvedRevision extends RevisionBase implements RevisionWithPage {
     this.delta = data.delta;
     this.minor = data.minor;
     this.page = data.page;
+  }
+
+  // By default, the wiki is included, so I defined toJSON
+  toJSON(): RevisionWithPage {
+    return {
+      id: this.id,
+      page: this.page,
+      size: this.size,
+      minor: this.minor,
+      timestamp: this.timestamp,
+      user: this.user,
+      comment: this.comment,
+      delta: this.delta,
+    };
   }
 }

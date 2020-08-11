@@ -24,10 +24,12 @@ export interface ActionsRevision {
   parentid: number;
   minor: boolean;
   user: string;
+  anon?: boolean;
   userid: number;
   timestamp: string;
   size: number;
   comment: string;
+  tags: string[];
 }
 
 export interface ActionsPage {
@@ -52,6 +54,7 @@ export interface ActionsPage {
   thumbnail: { source: string; width: number; height: number };
   original: { source: string; width: number; height: number };
   pageimage: string;
+  contributors: Array<{ userid: number; name: string }>;
 }
 
 export interface QueryResponse {
@@ -61,6 +64,7 @@ export interface QueryResponse {
       url: string;
       text: string;
     };
+    users: Array<{ groups?: string[]; invalid?: boolean }>;
   };
   continue: {
     rvcontinue: string;

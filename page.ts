@@ -36,8 +36,8 @@ abstract class PageBase {
       prop: "images",
     }).then(async ({ query }: QueryResponse) => ({
       files: await Promise.all(
-        query.pages[0].images.map((image) =>
-          this.wiki.filePolyfill(image.title, false)
+        query.pages[0].images.map(async (image) =>
+          ({...await this.wiki.file(image.title), thumbnail: undefined})
         ),
       ),
     }));
@@ -462,5 +462,18 @@ export class ResolvedPage extends PageBase
     this.license = data.license;
     this.source = data.source;
     this.html = data.html;
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      key: this.key,
+      title: this.title,
+      latest: this.latest,
+      content_model: this.content_model,
+      licence: this.license,
+      source: this.source,
+      html: this.html,
+    };
   }
 }

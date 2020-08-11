@@ -181,7 +181,7 @@ export interface Revision {
     name: string;
 
     /** User identifier */
-    id: number;
+    id: number | null;
   };
 
   /** Time of the edit in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format */
