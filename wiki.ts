@@ -67,11 +67,13 @@ export class Wiki {
   constructor(url: string | URL, public token?: string) {
     this.apiUrl = url instanceof URL ? url : new URL(url);
 
-    if (!this.apiUrl.pathname.endsWith("/")) {
+    if (this.apiUrl.pathname.endsWith("rest.php/v1")) {
       this.apiUrl.pathname += "/";
+    } else if (this.apiUrl.pathname.endsWith("api.php/")) {
+      this.apiUrl.pathname = this.apiUrl.pathname.slice(0, -1);
     }
 
-    this.polyfilled = this.apiUrl.pathname.endsWith("api.php/");
+    this.polyfilled = this.apiUrl.pathname.endsWith("api.php");
   }
 
   async convertRevision(revision: ActionsRevision): Promise<Revision>;
@@ -124,7 +126,16 @@ export class Wiki {
         `${path}?${
           new URLSearchParams(
             Object.fromEntries(
-              Object.entries(params)
+              Object.entries(
+                this.polyfilled
+                  ? {
+                    ...params,
+                    format: "json",
+                    formatversion: "2",
+                    errorformat: "plaintext",
+                  }
+                  : params,
+              )
                 .filter((
                   param,
                 ): param is [string, string | number | string[]] =>
