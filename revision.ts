@@ -1,9 +1,9 @@
 import type {
-  QueryResponse,
   ActionsPage,
   ActionsRevision,
-} from "./actions-api-types.d.ts";
-import type { RevisionWithPage } from "./rest-api-types.d.ts";
+  QueryResponse,
+} from "./actions-types.ts";
+import type { RevisionWithPage } from "./rest-types.ts";
 import Wiki from "./wiki.ts";
 
 abstract class RevisionBase {
@@ -25,19 +25,21 @@ export class AsyncRevision extends RevisionBase
 
   async fetchPolyfill() {
     return this.wiki.convertRevision(
-      ...await this.wiki.actionsRequest({
-        action: "query",
-        revids: this.id,
-        prop: "revisions",
-        rvprop: [
-          "ids",
-          "timestamp",
-          "flags",
-          "size",
-          "comment",
-          "user",
-          "userid",
-        ],
+      ...await this.wiki.request({
+        params: {
+          action: "query",
+          revids: this.id,
+          prop: "revisions",
+          rvprop: [
+            "ids",
+            "timestamp",
+            "flags",
+            "size",
+            "comment",
+            "user",
+            "userid",
+          ],
+        },
       }).then((
         { query }: QueryResponse,
       ): [ActionsRevision, ActionsPage] => [
@@ -49,62 +51,48 @@ export class AsyncRevision extends RevisionBase
 
   /** Fetch computed properties */
   async fetch(): Promise<ResolvedRevision> {
-    await this.wiki.init();
-
     return new ResolvedRevision(
       this.wiki,
       await (this.wiki.polyfilled
         ? this.fetchPolyfill()
-        : this.wiki.request(`revision/${this.id}/bare`)),
+        : this.wiki.request({ path: `revision/${this.id}/bare` })),
     );
   }
 
   // Async property accessors
 
   get user(): Promise<{ name: string; id: number | null }> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then((revision) => revision.user);
   }
 
   get timestamp(): Promise<string> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then((revision) => revision.timestamp);
   }
 
   get comment(): Promise<string | null> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then((revision) => revision.comment);
   }
 
   get size(): Promise<number> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then((revision) => revision.size);
   }
 
   get delta(): Promise<number | null> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then((revision) => revision.delta);
   }
 
   get minor(): Promise<boolean> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then((revision) => revision.minor);
   }
@@ -113,9 +101,7 @@ export class AsyncRevision extends RevisionBase
     id: number;
     title: string;
   }> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then((revision) => revision.page);
   }
@@ -132,9 +118,7 @@ export class AsyncRevision extends RevisionBase
       | undefined
       | null,
   ): PromiseLike<TResult1 | TResult2> {
-    if (typeof this.promise === "undefined") {
-      this.promise = this.fetch();
-    }
+    this.promise ??= this.fetch();
 
     return this.promise.then(onfulfilled, onrejected);
   }

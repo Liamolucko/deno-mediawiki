@@ -1,21 +1,21 @@
-import * as path from "https://deno.land/std/path/mod.ts";
-import type {
+import * as rt from "https://stupid-extensions.com/denopkg.com/Liamolucko/runtypes@export-type/src/index.ts";
+import {
   ActionsError,
+  ActionsPage,
   ActionsRevision,
   LegacyActionsError,
   QueryResponse,
-  ActionsPage,
-} from "./actions-api-types.d.ts";
+} from "./actions-types.ts";
 import { AsyncPage } from "./page.ts";
-import type {
+import {
   ApiError,
   CompleteResult,
   Diff,
   FileWithThumbnail,
   Revision,
-  SearchResult,
   RevisionWithPage,
-} from "./rest-api-types.d.ts";
+  SearchResult,
+} from "./rest-types.ts";
 import { AsyncRevision } from "./revision.ts";
 
 type AsyncProxy<T> = { [P in keyof T]: Promise<T[P]> } & Promise<T>;
@@ -34,94 +34,44 @@ function AsyncProxy<T>(target: Promise<T>): AsyncProxy<T> {
   }) as { [P in keyof T]: Promise<T[P]> } & Promise<T>;
 }
 
-function isRestError(response: any): response is ApiError {
-  return typeof response.httpCode !== "undefined";
-}
-
-function handleRestError<T extends object>(response: ApiError | T): T {
-  if (!isRestError(response)) return response;
-
-  throw Error(
-    response.messageTranslations?.["en"] ?? response.message ??
-      response.httpCode.toString(),
-  );
-}
-
-function isActionsError(
-  response: any,
-): response is LegacyActionsError | ActionsError {
-  return typeof response.error !== "undefined" ||
-    typeof response.errors !== "undefined";
-}
-
-function isLegacyError(
-  error: LegacyActionsError | ActionsError,
-): error is LegacyActionsError {
-  return typeof (error as LegacyActionsError).error !== "undefined";
-}
-
-function handleActionsError<T extends object>(
-  response: (LegacyActionsError | ActionsError) | T,
-): T {
-  if (!isActionsError(response)) return response;
-
-  throw Error(
-    isLegacyError(response) ? response.error.info : response.errors[0].text,
-  );
+function handleError<T>(
+  response: T | ApiError | ActionsError | LegacyActionsError,
+) {
+  if (ApiError.guard(response)) {
+    throw new Error(
+      response.messageTranslations?.["en"] ??
+        response.message ??
+        response.httpCode.toString(),
+    );
+  } else if (ActionsError.guard(response)) {
+    throw new Error(response.errors[0].text);
+  } else if (LegacyActionsError.guard(response)) {
+    throw new Error(response.error.info);
+  } else {
+    return response;
+  }
 }
 
 /**
  * A wrapper object for a wiki at a given url.
  */
 export class Wiki {
-  url: string;
-  apiUrl: string;
+  apiUrl: URL;
   polyfilled: boolean;
-
-  private initialized = false;
 
   /**
    * Creates a wiki object from its API url
-   * @param url The path to the wiki's Mediawiki installation or the API directly, 
-   * e.g. https://en.wikipedia.org/w or https://en.wikipedia.org/w/rest.php
+   * @param url The path to the wiki's API, e.g. `https://en.wikipedia.org/w/rest.php/v1/`.
    * @param token OAuth token to use for authentication
    */
-  constructor(url: string, public token?: string) {
-    // Find path of mediawiki installation and user's chosen API, if any
-    const [mediawikiPath, api] = url.split(/\/?(?=(?:(?:rest|api)\.php)?\/?$)/);
+  constructor(url: string | URL, public token?: string) {
+    this.apiUrl = url instanceof URL ? url : new URL(url);
 
-    this.url = mediawikiPath;
-    this.polyfilled = api === "api.php";
-    this.apiUrl = path.join(
-      this.url,
-      this.polyfilled ? "api.php" : "rest.php/v1",
-    );
-  }
-
-  /**
-   * Checks which APIs are available and validates url. Automatically called on first request.
-   */
-  async init() {
-    if (this.initialized) return;
-
-    if (
-      (await fetch(path.join(this.apiUrl, "search/page?q=test"))).status === 404
-    ) {
-      // If they've already chosen the Actions API and it's not there, throw
-      if (this.polyfilled) throw Error("Invalid API url");
-
-      this.polyfilled = true;
-      this.apiUrl = path.join(this.url, "api.php");
-
-      // If neither the REST or Actions API are there, throw
-      if (
-        (await fetch(this.apiUrl)).status === 404
-      ) {
-        throw Error("Invalid API url");
-      }
+    if (!this.apiUrl.pathname.endsWith("/")) {
+      this.apiUrl.pathname += "/";
     }
 
-    this.initialized = true;
+    this.polyfilled = this.apiUrl.pathname.endsWith("api.php/");
   }
 
   async convertRevision(revision: ActionsRevision): Promise<Revision>;
@@ -144,78 +94,61 @@ export class Wiki {
         name: revision.user,
       },
       delta: revision.parentid !== 0
-        ? await this.actionsRequest(
-          {
+        ? await this.request({
+          params: {
             action: "query",
             revids: revision.parentid,
             prop: "revisions",
             rvprop: "size",
           },
-        ).then(({ query }: QueryResponse) => revision.size - query.pages[0].revisions[0].size)
+        })
+          .then(QueryResponse.check)
+          .then(({ query }) => revision.size - query.pages[0].revisions[0].size)
         : null,
-      ...(typeof page !== "undefined" &&
-        { page: { id: page.pageid, title: page.title } }),
+      ...page && { page: { id: page.pageid, title: page.title } },
     };
   }
 
   /** 
-   * Low-level REST API command. NOT POLYFILLED!
+   * Make a HTTP request to the API.
    */
-  async request(
-    url: string,
-    params: Record<string, string | number | string[] | undefined> = {},
-    init?: RequestInit,
-  ) {
+  async request({ method = "GET", path, params = {}, headers, body }: {
+    method?: string;
+    path?: string;
+    params?: Record<string, string | number | string[] | undefined>;
+    headers?: Record<string, string>;
+    body?: string;
+  }) {
     return fetch(
-      `${path.join(this.apiUrl, url)}?${
-        new URLSearchParams(
-          Object.fromEntries(
-            Object.entries(params)
-              .filter((param): param is [string, string | number | string[]] => typeof param[1] !== "undefined")
-              .map(([key, value]) => [
-                key,
-                typeof value === "string" ? value : typeof value === "number"
-                  ? value.toString()
-                  : value.join("|"),
-              ]),
-          ),
-        ).toString()
-      }`,
-      init,
-    )
-      .then((response) => response.json().catch(() => console.log(response)))
-      .then(handleRestError);
-  }
-
-  /** 
-   * Low-level Actions API command.
-   */
-  async actionsRequest(
-    params: Record<string, string | number | string[] | undefined> = {},
-    init?: RequestInit,
-  ) {
-    return fetch(
-      `${this.apiUrl}?${new URLSearchParams({
-        format: "json",
-        formatversion: "2",
-        errorformat: "plaintext",
-        ...Object.fromEntries(
-          Object.entries(params)
-            .filter((param): param is [string, string | number | string[]] => typeof param[1] !== "undefined")
-            .map(([key, value]) => [
-              key,
-              typeof value === "string" || typeof value === "undefined"
-                ? value
-                : typeof value === "number"
-                ? value.toString()
-                : value.join("|"),
-            ]),
-        ),
-      })}`,
-      init,
+      new URL(
+        `${path}?${
+          new URLSearchParams(
+            Object.fromEntries(
+              Object.entries(params)
+                .filter((
+                  param,
+                ): param is [string, string | number | string[]] =>
+                  typeof param[1] !== "undefined"
+                )
+                .map(([key, value]) => [
+                  key,
+                  typeof value === "string" ? value : typeof value === "number"
+                    ? value.toString()
+                    : value.join("|"),
+                ]),
+            ),
+          ).toString()
+        }`,
+        this.apiUrl,
+      ),
+      {
+        body,
+        headers,
+        method,
+      },
     )
       .then((response) => response.json())
-      .then(handleActionsError);
+      .then(handleError);
   }
 
   // Polyfills
@@ -225,29 +158,37 @@ export class Wiki {
     q: string,
     limit: number | string = 50,
   ): Promise<{ pages: SearchResult[] }> {
-    return this.actionsRequest({
-      action: "query",
-      list: "search",
-      srsearch: q,
-      srlimit: limit,
+    return this.request({
+      params: {
+        action: "query",
+        list: "search",
+        srsearch: q,
+        srlimit: limit,
+      },
     });
   }
 
-  private async filePolyfill(title: string, thumbnails = true, thumbsize = 1000000) {
-    const page = await this.actionsRequest({
-      action: "query",
-      titles: title,
-      prop: ["imageinfo", "pageimages"],
-      iiprop: [
-        "timestamp",
-        "user",
-        "userid",
-        "size",
-        "url",
-        "mediatype",
-      ],
-      piprop: ["thumbnail", "name", "original"],
-      pithumbsize: thumbsize,
+  private async filePolyfill(
+    title: string,
+    thumbnails = true,
+    thumbsize = 1000000,
+  ) {
+    const page = await this.request({
+      params: {
+        action: "query",
+        titles: title,
+        prop: ["imageinfo", "pageimages"],
+        iiprop: [
+          "timestamp",
+          "user",
+          "userid",
+          "size",
+          "url",
+          "mediatype",
+        ],
+        piprop: ["thumbnail", "name", "original"],
+        pithumbsize: thumbsize,
+      },
     }).then(({ query }: QueryResponse) => query.pages[0]);
 
     const imageInfo = page.imageinfo[0];
@@ -294,20 +235,22 @@ export class Wiki {
    */
   async search(
     q: string,
-    limit: number | string = 50,
-  ): Promise<{ pages: SearchResult[] }> {
-    if (!this.initialized) await this.init();
-
+    limit: number = 50,
+  ): Promise<SearchResult[]> {
     if (limit < 1 || limit > 100) {
       throw Error(
         "Invalid limit requested. Set limit parameter to between 1 and 100.",
       );
     }
 
-    return this.request(
-      "search/page",
-      { q, limit: limit.toString() },
-    );
+    if (this.polyfilled) {
+      throw new Error("TODO");
+    } else {
+      return this.request({
+        path: "search/page",
+        params: { q, limit },
+      }).then(({ pages }) => rt.Array(SearchResult).check(pages));
+    }
   }
 
   /** 
@@ -317,20 +260,18 @@ export class Wiki {
    */
   async complete(
     q: string,
-    limit: number | string = 50,
-  ): Promise<{ pages: CompleteResult[] }> {
-    if (!this.initialized) await this.init();
-
+    limit: number = 50,
+  ): Promise<CompleteResult[]> {
     if (limit < 1 || limit > 100) {
       throw Error(
         "Invalid limit requested. Set limit parameter to between 1 and 100.",
       );
     }
 
-    return this.request(
-      "search/title",
-      { q, limit: limit.toString() },
-    );
+    return this.request({
+      path: "search/title",
+      params: { q, limit },
+    }).then(({ pages }) => rt.Array(CompleteResult).check(pages));
   }
 
   /**
@@ -358,9 +299,9 @@ export class Wiki {
    * @param title File title
    */
   async file(title: string) {
-    if (!this.initialized) await this.init();
-
-    return AsyncProxy<FileWithThumbnail>(this.request(`file/${title}`));
+    return AsyncProxy(
+      this.request({ path: `file/${title}` }).then(FileWithThumbnail.check),
+    );
   }
 
   /** 
@@ -383,9 +324,9 @@ export class Wiki {
    * @param to Revision identifier to compare to the base
    */
   async compare(from: number | string, to: number | string): Promise<Diff> {
-    if (!this.initialized) await this.init();
-
-    return this.request(`revision/${from}/compare/${to}`);
+    return this.request({ path: `revision/${from}/compare/${to}` }).then(
+      Diff.check,
+    );
   }
 }
 
