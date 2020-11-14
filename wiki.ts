@@ -112,7 +112,7 @@ export class Wiki {
   /** 
    * Make a HTTP request to the API.
    */
-  async request({ method = "GET", path, params = {}, headers, body }: {
+  async request({ method = "GET", path = "", params = {}, headers, body }: {
     method?: string;
     path?: string;
     params?: Record<string, string | number | string[] | undefined>;
