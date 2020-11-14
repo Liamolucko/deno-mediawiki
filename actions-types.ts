@@ -38,7 +38,6 @@ export const ActionsRevision = Record({
   user: String,
   userid: Number,
   timestamp: String,
-  content: String,
   size: Number,
   comment: String,
   tags: Array(String),
@@ -47,16 +46,28 @@ export const ActionsRevision = Record({
 }));
 export type ActionsRevision = Static<typeof ActionsRevision>;
 
+export const ActionsRevisionWithContent = Record({
+  revid: Number,
+  timestamp: String,
+  content: String,
+});
+export type ActionsRevisionWithContent = Static<
+  typeof ActionsRevisionWithContent
+>;
+
 export const ActionsPage = Record({
   pageid: Number,
   title: String,
-  revisions: Array(ActionsRevision),
-  contentmodel: String,
 });
 export type ActionsPage = Static<typeof ActionsPage>;
 
-export const ImagePage = Record({
-  title: String,
+export const ActionsPageWithContent = ActionsPage.And(Record({
+  revisions: Array(ActionsRevisionWithContent),
+  contentmodel: String,
+}));
+export type ActionsPageWithContent = Static<typeof ActionsPageWithContent>;
+
+export const ActionsPageWithImages = ActionsPage.And(Record({
   images: Array(Record({ title: String })),
   imageinfo: Array(
     Record({
@@ -77,52 +88,74 @@ export const ImagePage = Record({
   thumbnail: Record({ source: String, width: Number, height: Number }),
   original: Record({ source: String, width: Number, height: Number }),
   pageimage: String,
-});
-export type ImagePage = Static<typeof ImagePage>;
+}));
+export type ActionsPageWithImages = Static<typeof ActionsPageWithImages>;
 
-export const ContributorPage = Record({
+export const ActionsPageWithRevisions = ActionsPage.And(Record({
+  revisions: Array(ActionsRevision),
+}));
+export type ActionsPageWithRevisions = Static<typeof ActionsPageWithRevisions>;
+
+export const ActionsPageWithContributors = Record({
   contributors: Array(Record({ userid: Number, name: String })),
   revisions: Array(ActionsRevision),
-})
-export type ContributorPage = Static<typeof ContributorPage>;
+});
+export type ActionsPageWithContributors = Static<typeof ActionsPageWithContributors>;
 
-export const QueryPages = Record({
+export const QueryPageResponse = Record({
   query: Record({
-    pages: Array(ActionsPage),
+    pages: Array(ActionsPageWithContent),
     rightsinfo: Record({
       url: String,
       text: String,
     }),
-    users: Array(Partial({ groups: Array(String), invalid: Boolean })),
   }),
 });
-export type QueryPages = Static<typeof QueryPages>;
+export type QueryPageResponse = Static<typeof QueryPageResponse>;
 
-export const QueryImage = Record({
+export const QueryImagesResponse = Record({
   query: Record({
-    pages: Array(ImagePage),
+    pages: Array(ActionsPageWithImages),
   }),
 });
-export type QueryImage = Static<typeof QueryImage>;
+export type QueryImagesResponse = Static<typeof QueryImagesResponse>;
 
-export const QueryRevisions = Record({
+export const QueryHistoryResponse = Record({
   query: Record({
-    pages: Array(ContributorPage)
+    pages: Array(ActionsPageWithContributors),
   }),
   continue: Record({
     rvcontinue: String,
   }),
-})
-export type QueryRevisions = Static<typeof QueryRevisions>;
+});
+export type QueryHistoryResponse = Static<typeof QueryHistoryResponse>;
 
-export const ParseText = Record({
+export const QueryRevisionResponse = Record({
+  query: Record({
+    pages: Array(ActionsPageWithRevisions),
+  }),
+});
+export type QueryRevisionResponse = Static<typeof QueryRevisionResponse>;
+
+export const QueryRevisionSizeResponse = Record({
+  query: Record({
+    pages: Array(Record({
+      revisions: Array(Record({
+        size: Number,
+      })),
+    })),
+  }),
+});
+export type QueryRevisionSizeResponse = Static<typeof QueryRevisionSizeResponse>;
+
+export const ParseHtmlResponse = Record({
   parse: Record({
     text: String,
   }),
 });
-export type ParseText = Static<typeof ParseText>;
+export type ParseHtmlResponse = Static<typeof ParseHtmlResponse>;
 
-export const ParseLanglinks = Record({
+export const ParseLanglinksResponse = Record({
   parse: Record({
     langlinks: Array(Record({
       lang: String,
@@ -131,4 +164,4 @@ export const ParseLanglinks = Record({
     })),
   }),
 });
-export type ParseLanglinks = Static<typeof ParseLanglinks>;
+export type ParseLanglinksResponse = Static<typeof ParseLanglinksResponse>;

@@ -4,8 +4,9 @@ import {
   ActionsPage,
   ActionsRevision,
   LegacyActionsError,
-  QueryImage,
-  QueryPages,
+  QueryImagesResponse,
+  QueryPageResponse,
+  QueryRevisionSizeResponse,
 } from "./actions-types.ts";
 import { AsyncPage } from "./page.ts";
 import {
@@ -105,7 +106,7 @@ export class Wiki {
             rvprop: "size",
           },
         })
-          .then(QueryPages.check)
+          .then(QueryRevisionSizeResponse.check)
           .then(({ query }) => revision.size - query.pages[0].revisions[0].size)
         : null,
       ...page && { page: { id: page.pageid, title: page.title } },
@@ -201,7 +202,7 @@ export class Wiki {
         piprop: ["thumbnail", "name", "original"],
         pithumbsize: thumbsize,
       },
-    }).then(QueryImage.check)
+    }).then(QueryImagesResponse.check)
       .then(({ query }) => query.pages[0]);
 
     const imageInfo = page.imageinfo[0];

@@ -1,5 +1,10 @@
 import * as rt from "https://stupid-extensions.com/denopkg.com/Liamolucko/runtypes@export-type/src/index.ts";
-import { ParseLanglinks, ParseText, QueryImage, QueryPages } from "./actions-types.ts";
+import {
+  ParseHtmlResponse,
+  ParseLanglinksResponse,
+  QueryImagesResponse,
+  QueryPageResponse,
+} from "./actions-types.ts";
 import { History } from "./history.ts";
 import { PageLanguage, PageWithSource, WikiFile } from "./rest-types.ts";
 import Wiki from "./wiki.ts";
@@ -17,7 +22,7 @@ abstract class PageBase {
           prop: "langlinks",
         },
       })
-        .then(ParseLanglinks.check)
+        .then(ParseLanglinksResponse.check)
         .then(({ parse }) =>
           parse.langlinks.map(({ lang, autonym, title }) => ({
             code: lang,
@@ -41,7 +46,7 @@ abstract class PageBase {
           prop: "images",
         },
       })
-        .then(QueryImage.check)
+        .then(QueryImagesResponse.check)
         .then(async ({ query }) => ({
           files: await Promise.all(
             query.pages[0].images.map(async (image) => ({
@@ -220,7 +225,7 @@ export class AsyncPage extends PageBase implements PromiseLike<ResolvedPage> {
           prop: "text",
         },
       })
-        .then(ParseText.check)
+        .then(ParseHtmlResponse.check)
         .then(({ parse }) => parse.text);
     } else {
       return fetch(new URL(`page/${this.title}/html`, this.wiki.apiUrl))
@@ -241,7 +246,7 @@ export class AsyncPage extends PageBase implements PromiseLike<ResolvedPage> {
           meta: "siteinfo",
           siprop: "rightsinfo",
         },
-      }).then(QueryPages.check);
+      }).then(QueryPageResponse.check);
 
       const page = query.pages[0];
       const revision = page.revisions[0];

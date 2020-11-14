@@ -1,4 +1,4 @@
-import { QueryRevisions } from "./actions-types.ts";
+import { QueryHistoryResponse } from "./actions-types.ts";
 import type { History as _History, Revision } from "./rest-types.ts";
 import Wiki from "./wiki.ts";
 
@@ -79,7 +79,7 @@ export class History
           pcgroup: "bot",
           pclimit: "max", // Hopefully it'll never come across a page with too many bot contributors
         },
-      }).then(QueryRevisions.check);
+      }).then(QueryHistoryResponse.check);
       const contributors = response.query.pages[0].contributors;
 
       let count = 0;

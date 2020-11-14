@@ -1,8 +1,9 @@
 import {
   ActionsPage,
   ActionsRevision,
-  QueryPages,
-  QueryRevisions,
+  QueryPageResponse,
+  QueryHistoryResponse,
+  QueryRevisionResponse,
 } from "./actions-types.ts";
 import { RevisionWithPage } from "./rest-types.ts";
 import Wiki from "./wiki.ts";
@@ -41,7 +42,7 @@ export class AsyncRevision extends RevisionBase
             "userid",
           ],
         },
-      }).then(QueryPages.check);
+      }).then(QueryRevisionResponse.check);
 
       return this.wiki.convertRevision(
         query.pages[0].revisions[0],
