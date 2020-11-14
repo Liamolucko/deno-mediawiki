@@ -52,6 +52,11 @@ export const ActionsPage = Record({
   title: String,
   revisions: Array(ActionsRevision),
   contentmodel: String,
+});
+export type ActionsPage = Static<typeof ActionsPage>;
+
+export const ImagePage = Record({
+  title: String,
   images: Array(Record({ title: String })),
   imageinfo: Array(
     Record({
@@ -72,11 +77,16 @@ export const ActionsPage = Record({
   thumbnail: Record({ source: String, width: Number, height: Number }),
   original: Record({ source: String, width: Number, height: Number }),
   pageimage: String,
-  contributors: Array(Record({ userid: Number, name: String })),
 });
-export type ActionsPage = Static<typeof ActionsPage>;
+export type ImagePage = Static<typeof ImagePage>;
 
-export const QueryResponse = Record({
+export const ContributorPage = Record({
+  contributors: Array(Record({ userid: Number, name: String })),
+  revisions: Array(ActionsRevision),
+})
+export type ContributorPage = Static<typeof ContributorPage>;
+
+export const QueryPages = Record({
   query: Record({
     pages: Array(ActionsPage),
     rightsinfo: Record({
@@ -85,23 +95,35 @@ export const QueryResponse = Record({
     }),
     users: Array(Partial({ groups: Array(String), invalid: Boolean })),
   }),
+});
+export type QueryPages = Static<typeof QueryPages>;
+
+export const QueryImage = Record({
+  query: Record({
+    pages: Array(ImagePage),
+  }),
+});
+export type QueryImage = Static<typeof QueryImage>;
+
+export const QueryRevisions = Record({
+  query: Record({
+    pages: Array(ContributorPage)
+  }),
   continue: Record({
     rvcontinue: String,
   }),
-  search: Array(Record({
-    title: String,
-    pageid: Number,
-    snippet: String,
-  })),
-});
-export type QueryResponse = Static<typeof QueryResponse>;
+})
+export type QueryRevisions = Static<typeof QueryRevisions>;
 
-export const ParseResponse = Record({
+export const ParseText = Record({
   parse: Record({
-    pageid: Number,
-    title: String,
-    wikitext: String,
     text: String,
+  }),
+});
+export type ParseText = Static<typeof ParseText>;
+
+export const ParseLanglinks = Record({
+  parse: Record({
     langlinks: Array(Record({
       lang: String,
       autonym: String,
@@ -109,4 +131,4 @@ export const ParseResponse = Record({
     })),
   }),
 });
-export type ParseResponse = Static<typeof ParseResponse>;
+export type ParseLanglinks = Static<typeof ParseLanglinks>;

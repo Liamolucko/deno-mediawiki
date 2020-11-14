@@ -1,9 +1,10 @@
-import type {
+import {
   ActionsPage,
   ActionsRevision,
-  QueryResponse,
+  QueryPages,
+  QueryRevisions,
 } from "./actions-types.ts";
-import type { RevisionWithPage } from "./rest-types.ts";
+import { RevisionWithPage } from "./rest-types.ts";
 import Wiki from "./wiki.ts";
 
 abstract class RevisionBase {
@@ -23,9 +24,9 @@ export class AsyncRevision extends RevisionBase
     super();
   }
 
-  async fetchPolyfill() {
-    return this.wiki.convertRevision(
-      ...await this.wiki.request({
+  private async _fetch() {
+    if (this.wiki.polyfilled) {
+      const { query } = await this.wiki.request({
         params: {
           action: "query",
           revids: this.id,
@@ -40,22 +41,23 @@ export class AsyncRevision extends RevisionBase
             "userid",
           ],
         },
-      }).then((
-        { query }: QueryResponse,
-      ): [ActionsRevision, ActionsPage] => [
+      }).then(QueryPages.check);
+
+      return this.wiki.convertRevision(
         query.pages[0].revisions[0],
         query.pages[0],
-      ]),
-    );
+      );
+    } else {
+      return this.wiki.request({ path: `revision/${this.id}/bare` })
+        .then(RevisionWithPage.check);
+    }
   }
 
   /** Fetch computed properties */
   async fetch(): Promise<ResolvedRevision> {
     return new ResolvedRevision(
       this.wiki,
-      await (this.wiki.polyfilled
-        ? this.fetchPolyfill()
-        : this.wiki.request({ path: `revision/${this.id}/bare` })),
+      await this._fetch(),
     );
   }
 

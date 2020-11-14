@@ -4,7 +4,8 @@ import {
   ActionsPage,
   ActionsRevision,
   LegacyActionsError,
-  QueryResponse,
+  QueryImage,
+  QueryPages,
 } from "./actions-types.ts";
 import { AsyncPage } from "./page.ts";
 import {
@@ -83,7 +84,7 @@ export class Wiki {
   ): Promise<RevisionWithPage>;
   async convertRevision(
     revision: ActionsRevision,
-    page?: ActionsPage,
+    page?: { pageid: number; title: string },
   ): Promise<Revision | RevisionWithPage> {
     return {
       id: revision.revid,
@@ -104,7 +105,7 @@ export class Wiki {
             rvprop: "size",
           },
         })
-          .then(QueryResponse.check)
+          .then(QueryPages.check)
           .then(({ query }) => revision.size - query.pages[0].revisions[0].size)
         : null,
       ...page && { page: { id: page.pageid, title: page.title } },
@@ -200,7 +201,8 @@ export class Wiki {
         piprop: ["thumbnail", "name", "original"],
         pithumbsize: thumbsize,
       },
-    }).then(({ query }: QueryResponse) => query.pages[0]);
+    }).then(QueryImage.check)
+      .then(({ query }) => query.pages[0]);
 
     const imageInfo = page.imageinfo[0];
 

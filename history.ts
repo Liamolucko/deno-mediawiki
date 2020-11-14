@@ -1,4 +1,4 @@
-import type { QueryResponse } from "./actions-types.ts";
+import { QueryRevisions } from "./actions-types.ts";
 import type { History as _History, Revision } from "./rest-types.ts";
 import Wiki from "./wiki.ts";
 
@@ -72,14 +72,14 @@ export class History
         rvtag: this.#filter === "reverted" ? "mw-rollback" : undefined,
       };
 
-      let response: QueryResponse = await this.wiki.request({
+      let response = await this.wiki.request({
         params: {
           ...params,
           prop: ["revisions", "contributors"],
           pcgroup: "bot",
           pclimit: "max", // Hopefully it'll never come across a page with too many bot contributors
         },
-      });
+      }).then(QueryRevisions.check);
       const contributors = response.query.pages[0].contributors;
 
       let count = 0;
