@@ -117,7 +117,7 @@ export class AsyncRevision extends RevisionBase
       | undefined
       | null,
     onrejected?:
-      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
       | undefined
       | null,
   ): PromiseLike<TResult1 | TResult2> {

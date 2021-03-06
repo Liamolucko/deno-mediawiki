@@ -23,14 +23,14 @@ import { AsyncRevision } from "./revision.ts";
 type AsyncProxy<T> = { [P in keyof T]: Promise<T[P]> } & Promise<T>;
 function AsyncProxy<T>(target: Promise<T>): AsyncProxy<T> {
   return new Proxy(target, {
-    get(target, prop: keyof T | keyof Promise<T>) {
+    get(target, prop) {
       if (
         prop === "then" || prop === "catch" || prop === "finally" ||
         prop === Symbol.toStringTag
       ) {
         return target[prop as keyof typeof target];
       } else {
-        return target.then((value) => value[prop]);
+        return target.then((value) => value[prop as keyof T]);
       }
     },
   }) as { [P in keyof T]: Promise<T[P]> } & Promise<T>;
@@ -116,7 +116,7 @@ export class Wiki {
   /** 
    * Make a HTTP request to the API.
    */
-  async request({ method = "GET", path = "", params = {}, headers, body }: {
+  request({ method = "GET", path = "", params = {}, headers, body }: {
     method?: string;
     path?: string;
     params?: Record<string, string | number | string[] | undefined>;
@@ -167,7 +167,7 @@ export class Wiki {
   // Polyfills
 
   /** WIP */
-  private async searchPolyfill(
+  private searchPolyfill(
     q: string,
     limit: number | string = 50,
   ): Promise<{ pages: SearchResult[] }> {
@@ -247,9 +247,9 @@ export class Wiki {
    * @param q Search terms
    * @param limit Maximum number of search results to return, between 1 and 100. Default: 50
    */
-  async search(
+  search(
     q: string,
-    limit: number = 50,
+    limit = 50,
   ): Promise<SearchResult[]> {
     if (limit < 1 || limit > 100) {
       throw Error(
@@ -272,9 +272,9 @@ export class Wiki {
    * @param q Search terms
    * @param limit Maximum number of search results to return, between 1 and 100. Default: 50
    */
-  async complete(
+  complete(
     q: string,
-    limit: number = 50,
+    limit = 50,
   ): Promise<CompleteResult[]> {
     if (limit < 1 || limit > 100) {
       throw Error(
@@ -312,7 +312,7 @@ export class Wiki {
    * Returns information about a file, including links to download the file in thumbnail, preview, and original formats.
    * @param title File title
    */
-  async file(title: string) {
+  file(title: string) {
     return AsyncProxy(
       this.request({ path: `file/${title}` }).then(FileWithThumbnail.check),
     );
@@ -337,7 +337,7 @@ export class Wiki {
    * @param from Revision identifier to use as the base for comparison
    * @param to Revision identifier to compare to the base
    */
-  async compare(from: number | string, to: number | string): Promise<Diff> {
+  compare(from: number | string, to: number | string): Promise<Diff> {
     return this.request({ path: `revision/${from}/compare/${to}` }).then(
       Diff.check,
     );

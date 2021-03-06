@@ -65,7 +65,7 @@ abstract class PageBase {
    * 
    * This endpoint is designed to be used with the OAuth extension authorization process. Callers using cookie-based authentication instead must add a CSRF `token` to the request body. To get a CSRF token, see the [Action API](https://www.mediawiki.org/wiki/API:Tokens).
    */
-  async create(options: {
+  create(options: {
     /** Page content in the format specified by the `content_model` property */
     source: string;
 
@@ -113,7 +113,7 @@ abstract class PageBase {
    * 
    * To create a page, omit `latest.id` from the request.
    */
-  async update(options: {
+  update(options: {
     /** Page content in the format specified by the `content_model` property */
     source: string;
 
@@ -290,7 +290,7 @@ export class AsyncPage extends PageBase implements PromiseLike<ResolvedPage> {
       | undefined
       | null,
     onrejected?:
-      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
       | undefined
       | null,
   ): Promise<TResult1 | TResult2> {
